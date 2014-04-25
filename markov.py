@@ -8,8 +8,8 @@ License: GNU GPLv3 http://www.gnu.org/licenses/gpl.html
 """
 
 import sys
-# import string
 import random
+import json
 
 suffix_map = {}
 prefix = ()
@@ -52,6 +52,7 @@ def random_text(n=100):
     """Generates random words from analysed text"""
     # choose random prefix
     start = random.choice(list(suffix_map.keys()))
+    sentence = ''
 
     for i in range(n):
         suffixes = suffix_map.get(start, None)
@@ -62,8 +63,11 @@ def random_text(n=100):
 
         # choose random suffix
         word = random.choice(suffixes)
-        print(word)
+        # print(word)
+        sentence += '%s ' % word
         start = shift(start, word)
+
+    return sentence
 
 
 def shift(t, word):
@@ -71,15 +75,29 @@ def shift(t, word):
     return t[1:] + (word,)
 
 
-def main(name, filename='', n=100, order=2, *args):
+def main(name, filename='', n=100, order=2, sentences=10, *args):
     try:
         n = int(n)
         order = int(order)
+        sentences = int(sentences)
     except:
-        print("Usage: markov.py filename [# of words] [prefix length]")
+        print("Usage: markov.py filename [# of words] [prefix length] [sentences to save]")
     else:
         process_file(filename, order)
-        random_text(n)
+
+        # generate a few sentences and save to json
+        out = {}
+        lines = []
+        for i in range(sentences):
+            sentence = random_text(n)
+            print(sentence)
+            lines.append(sentence)
+        out['sentences'] = lines
+
+        output = open('sentences.json', 'w')
+        output.write(json.dumps(out))
+        output.close()
+
 
 if __name__ == '__main__':
     main(*sys.argv)
