@@ -1,0 +1,20 @@
+{
+  "name": "markov-generator",
+  "version": "1.0.0",
+  "description": "Markov chain generator",
+  "main": "markov.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "markov"
+  ],
+  "author": "whostolemyhat",
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "^2.0.1"
+  }
+}

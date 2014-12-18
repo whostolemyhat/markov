@@ -1,22 +1,34 @@
 var fs = require('fs');
+var EventEmitter = require('events').EventEmitter;
+var util = require('util');
 
-var prefix = [];
-var memory = {};
+var Markov = function() {
+    'use strict';
 
-var splitOnFullstop = true;
-var removePunctuation = false;
-var convertToLowercase = false;
+    this.prefix = [];
+    this.memory = {};
 
-function removePunctuation(word) {
+    // TODO: use options
+    this.splitOnFullstop = true;
+    this.removePunctuation = false;
+    this.convertToLowercase = false;
+    this.words = '';
+};
+
+util.inherits(Markov, EventEmitter);
+
+
+Markov.prototype.removePunctuation = function(word) {
     'use strict';
 
     var punctRE = /[\u2000-\u206F\u2E00-\u2E7F\\'!"#\$%&\(\)\*\+,\-\.\/:;<=>\?@\[\]\^_`\{\|\}~]/g;
     return word.replace(punctRE, '');
-}
+};
 
-function processFile(filename, order) {
+Markov.prototype.processFile = function(filename, order) {
     'use strict';
 
+    var self = this;
     order = order || 2;
     var file = fs.createReadStream(filename);
 
@@ -26,76 +38,77 @@ function processFile(filename, order) {
     });
 
     file.on('data', function(data) {
-        var words = (data + '');
-        if(splitOnFullstop) {
-            words.replace('.', ' .');
+        self.words += (data + '');
+        if(self.splitOnFullstop) {
+            self.words = self.words.replace('.', ' .');
         }
 
-        words.replace(/(\r\n|\r|\n)/gm, ' ').split(' ');
+        self.words = self.words.replace(/(\r\n|\r|\n)/gm, ' ').split(' ');
 
-        words.forEach(function(word) {
-            if(convertToLowercase) {
+        self.words.forEach(function(word) {
+            if(self.convertToLowercase) {
                 word = word.toLowerCase();
             }
 
-            if(removePunctuation) {
-                processWord(removePunctuation(word).trim(), order);
+            if(self.removePunctuation) {
+                self.processWord(self.removePunctuation(word).trim(), order);
             } else {
-                processWord(encodeURIComponent(word).trim(), order);
+                self.processWord(encodeURIComponent(word).trim(), order);
             }
-        }, this);
+        }, self);
     });
 
 
     file.on('end', function() {
-        console.log('finished processing ' + filename);
+        self.emit('finish', filename);
     });
-}
+};
 
-function processWord(word, order) {
+Markov.prototype.processWord = function(word, order) {
     'use strict';
 
     if(word.length) {
-        if(prefix.length < order) {
+        if(this.prefix.length < order) {
             // add new word
-            prefix.push(word.toLowerCase());
+            this.prefix.push(word.toLowerCase());
             return;
         }
 
-        var key = prefix.join(',');
-        addToMemory(key, word);
-        prefix.push(word);
-        prefix.shift();
+        var key = this.prefix.join(',');
+        this.addToMemory(key, word);
+        this.prefix.push(word);
+        this.prefix.shift();
     }
-}
+};
 
-function addToMemory(key, value) {
+Markov.prototype.addToMemory = function(key, value) {
     'use strict';
 
-    if(!memory[key]) {
-        memory[key] = [];
+    if(!this.memory[key]) {
+        this.memory[key] = [];
     }
 
-    memory[key].push(value);
-}
+    this.memory[key].push(value);
+};
 
-function randomText(n) {
+Markov.prototype.randomText = function(n) {
     'use strict';
 
-    n = n || 100;
+    var self = this;
     var sentence = '';
+    n = n || 100;
 
-    var start = getRandomKey();
+    var start = self.getRandomKey(self.memory);
 
     for(var i = 0; i < n; i++) {
-        var suffix = memory[start];
+        var suffix = self.memory[start];
 
         if(!suffix) {
             // no value for key ie picked the last words in src
-            suffix = memory[getRandomKey()];
+            suffix = self.memory[self.getRandomKey()];
         }
 
-        var word = getRandomFromArray(suffix);
+        var word = self.getRandomFromArray(suffix);
 
         sentence += decodeURIComponent(word) + ' ';
 
@@ -106,26 +119,19 @@ function randomText(n) {
     }
 
     return sentence;
-}
+};
 
-function getRandomKey() {
+Markov.prototype.getRandomKey = function(memory) {
     'use strict';
 
     var keys = Object.keys(memory);
     return keys[Math.floor(Math.random() * keys.length)];
-}
+};
 
-function getRandomFromArray(arr) {
+Markov.prototype.getRandomFromArray = function(arr) {
     'use strict';
 
     return arr[Math.floor(Math.random() * arr.length)];
-}
+};
 
-module.exports = {
-    processFile: processFile,
-    memory: memory,
-    randomText: randomText,
-    splitOnFullstop: splitOnFullstop,
-    convertToLowercase: convertToLowercase,
-    removePunctuation: removePunctuation
-}
+module.exports = Markov;
