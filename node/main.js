@@ -2,7 +2,7 @@ var Markov = require('./markov');
 
 var markov = new Markov();
 
-markov.processFile('../frankenstein.txt');
+markov.processFile('../frankenstein.txt', 1);
 
 markov.on('finish', function(filename) {
     'use strict';
